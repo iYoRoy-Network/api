@@ -19,6 +19,7 @@ func defaultConfig() Config {
 		},
 		Webhook: WebhookConfig{
 			EnabledEvents: []string{"created", "updated", "deleted"},
+			HMACSecret:    "",
 		},
 	}
 }

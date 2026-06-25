@@ -33,4 +33,5 @@ type ReverseZoneConfig struct {
 // WebhookConfig Webhook 模块配置
 type WebhookConfig struct {
 	EnabledEvents []string `koanf:"enabled_events"`
+	HMACSecret    string   `koanf:"hmac_secret"` // NetBox webhook HMAC-SHA512 签名密钥
 }

@@ -19,9 +19,10 @@ func Init(e *echo.Echo, cfg *config.Config) {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	// 1. Webhook 路由组
+	// 1. Webhook 路由组（HMAC 签名验证 + 日志）
 	webhookGroup := e.Group("/webhook")
 	webhookGroup.Use(middleware.ZapLogger())
+	webhookGroup.Use(middleware.HookSignature(cfg.Webhook.HMACSecret))
 
 	// 2. 初始化 Cloudflare 客户端（从环境变量读取凭据）
 	cfClient, err := cloudflare.NewClient()

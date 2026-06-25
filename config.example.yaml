@@ -32,6 +32,7 @@ cloudflare:
       zone_name: "4.4.2.f.3.8.5.7.4.1.a.2.ip6.arpa"
 
 webhook:
+  hmac_secret: ""          # NetBox webhook HMAC-SHA512 签名密钥（为空则跳过验证）
   enabled_events:          # 启用的事件类型
     - created
     - updated
