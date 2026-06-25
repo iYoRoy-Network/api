@@ -1,6 +1,8 @@
 package webhook
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 
 	"iyoroynet-api/config"
@@ -26,6 +28,18 @@ func NewHandler(svc *Service, cfg *config.WebhookConfig) *Handler {
 // HandleIPAMRDNS 处理 /webhook/ipam/rdns 的 POST 请求
 // 接收 NetBox webhook，同步 Cloudflare DNS 记录
 func (h *Handler) HandleIPAMRDNS(c echo.Context) error {
+	// 读取原始请求体用于调试日志
+	rawBody, _ := io.ReadAll(c.Request().Body)
+	c.Request().Body = io.NopCloser(bytes.NewBuffer(rawBody))
+
+	zap.L().Debug("Webhook request",
+		zap.String("method", c.Request().Method),
+		zap.String("uri", c.Request().RequestURI),
+		zap.String("content_type", c.Request().Header.Get("Content-Type")),
+		zap.String("signature", c.Request().Header.Get("X-Hook-Signature")),
+		zap.ByteString("body", rawBody),
+	)
+
 	var webhook NetBoxWebhook
 
 	if err := c.Bind(&webhook); err != nil {
