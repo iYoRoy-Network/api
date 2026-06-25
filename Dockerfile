@@ -10,7 +10,4 @@ COPY --from=builder /build/iyoroynet-api /usr/local/bin/iyoroynet-api
 RUN mkdir -p /app/logs
 WORKDIR /app
 EXPOSE 8080
-ENV SERVER__SERVER_ADDRESS=":8080" \
-    LOG__LOG_LEVEL="info" \
-    LOG__LOG_FILE="logs/app.log"
 CMD ["/usr/local/bin/iyoroynet-api"]
