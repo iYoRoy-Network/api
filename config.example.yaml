@@ -1,0 +1,38 @@
+# iyoroynet-api 配置模板
+#
+# 说明：
+# 1. 此文件为配置模板，展示所有可用的配置项及其默认值
+# 2. 如需覆盖配置，请复制此文件为 config.local.yaml 并修改相应值
+# 3. config.local.yaml 已被 gitignore 忽略，不会提交到仓库
+#
+# 使用方式：
+#   cp config.example.yaml config.local.yaml
+#   # 然后编辑 config.local.yaml 添加你的配置
+#
+# Cloudflare 认证凭据：
+#   从环境变量读取，不在此配置文件中：
+#     CLOUDFLARE_API_TOKEN    — API Token（推荐，需 DNS:Edit 权限）
+#     CLOUDFLARE_API_KEY      — API Key（需配合 CLOUDFLARE_EMAIL）
+#     CLOUDFLARE_EMAIL        — 邮箱（仅 API Key 方式需要）
+
+server:
+  server_address: :8080
+
+log:
+  log_level: info          # debug | info | warn | error
+  log_file: logs/app.log
+
+cloudflare:
+  forward_zones:           # 前向 DNS Zone 列表（AAAA 记录）
+    - zone_id: "your-zone-id"
+      zone_name: "yori.moe"
+  reverse_zones:           # 反向 DNS Zone 列表（PTR 记录）
+    - prefix: "2a14:7583:f244::/48"
+      zone_id: "your-reverse-zone-id"
+      zone_name: "4.4.2.f.3.8.5.7.4.1.a.2.ip6.arpa"
+
+webhook:
+  enabled_events:          # 启用的事件类型
+    - created
+    - updated
+    - deleted
