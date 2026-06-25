@@ -60,12 +60,36 @@ func (s *Service) ProcessWebhook(ctx context.Context, webhook *NetBoxWebhook) (*
 	)
 
 	switch webhook.Event {
-	case "created", "updated":
+	case "created":
 		result.AAAASuccess, result.AAAAMessage = s.syncAAAA(ctx, dnsName, ip)
 		result.PTRSuccess, result.PTRMessage = s.syncPTR(ctx, ip, dnsName)
+
+	case "updated":
+		// 同步新数据
+		result.AAAASuccess, result.AAAAMessage = s.syncAAAA(ctx, dnsName, ip)
+		result.PTRSuccess, result.PTRMessage = s.syncPTR(ctx, ip, dnsName)
+
+		// 清理旧记录：对比 snapshot 中的旧值，不同则删除
+		if old := webhook.PreChangeData(); old != nil {
+			oldIP, _ := utils.NormalizeIP(old.Address)
+			oldDNS := strings.TrimSuffix(old.DNSName, ".")
+
+			if oldDNS != "" && oldDNS != dnsName {
+				zap.L().Info("DNS name changed, deleting old AAAA record",
+					zap.String("old", oldDNS), zap.String("new", dnsName))
+				s.deleteAAAA(ctx, oldDNS)
+			}
+			if oldIP != "" && oldIP != ip {
+				zap.L().Info("IP changed, deleting old PTR record",
+					zap.String("old", oldIP), zap.String("new", ip))
+				s.deletePTR(ctx, oldIP)
+			}
+		}
+
 	case "deleted":
 		result.AAAASuccess, result.AAAAMessage = s.deleteAAAA(ctx, dnsName)
 		result.PTRSuccess, result.PTRMessage = s.deletePTR(ctx, ip)
+
 	default:
 		return result, nil
 	}

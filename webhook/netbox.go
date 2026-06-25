@@ -57,3 +57,36 @@ func (w *NetBoxWebhook) Validate() error {
 func (w *NetBoxWebhook) IsEventEnabled(enabledEvents []string) bool {
 	return slices.Contains(enabledEvents, w.Event)
 }
+
+// PreChangeData 从 snapshot 中提取变更前的 IP 地址数据。
+// NetBox 的 snapshot 格式有两种：
+//   - {"prechange": {"address": "...", "dns_name": "..."}}   -- 标准格式
+//   - {"address": "...", "dns_name": "..."}                   -- 旧版平铺格式
+//
+// 若 snapshot 为 nil 或解析失败，返回空结构体。
+func (w *NetBoxWebhook) PreChangeData() *NetBoxIPAddress {
+	if w.Snapshot == nil {
+		return nil
+	}
+
+	raw, err := w.Snapshot.MarshalJSON()
+	if err != nil {
+		return nil
+	}
+
+	// 先尝试 {"prechange": {...}} 格式
+	var wrapper struct {
+		PreChange NetBoxIPAddress `json:"prechange"`
+	}
+	if err := json.Unmarshal(raw, &wrapper); err == nil && wrapper.PreChange.Address != "" {
+		return &wrapper.PreChange
+	}
+
+	// 回退：平铺格式
+	var data NetBoxIPAddress
+	if err := json.Unmarshal(raw, &data); err == nil && data.Address != "" {
+		return &data
+	}
+
+	return nil
+}
