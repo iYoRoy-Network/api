@@ -34,14 +34,12 @@ type NetBoxIPAddress struct {
 	CustomFields map[string]any `json:"custom_fields,omitempty"`
 }
 
-// Validate 验证 webhook 载荷是否包含必要的同步信息
+// Validate 验证 webhook 载荷是否包含必要的同步信息。
+// 不强制校验 model 字段 — 不同 NetBox 版本的模型标识可能不同，
+// 只要 event、address、dns_name 齐全就允许处理。
 func (w *NetBoxWebhook) Validate() error {
 	if w.Event == "" {
 		return fmt.Errorf("webhook event is required")
-	}
-
-	if w.Model != "ipam.ipaddress" {
-		return fmt.Errorf("unsupported model: %s (expected ipam.ipaddress)", w.Model)
 	}
 
 	if w.Data.Address == "" {

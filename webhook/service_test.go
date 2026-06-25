@@ -13,7 +13,6 @@ import (
 	"github.com/cloudflare/cloudflare-go/v4/option"
 )
 
-// setupMockCFClient 创建一个模拟 Cloudflare API 服务器和对应的 Client
 func setupMockCFClient(handler http.HandlerFunc) (*cloudflare.Client, *httptest.Server) {
 	server := httptest.NewServer(handler)
 	client := cloudflare.NewClientWithOptions(
@@ -23,11 +22,9 @@ func setupMockCFClient(handler http.HandlerFunc) (*cloudflare.Client, *httptest.
 	return client, server
 }
 
-// mockDNSResponse 返回标准的 Cloudflare API 模拟响应
 func mockDNSResponse(w http.ResponseWriter, r *http.Request, result any) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Cloudflare SDK 期望的响应结构
 	var resp any
 	switch r.Method {
 	case "POST", "PUT", "PATCH":
@@ -38,7 +35,6 @@ func mockDNSResponse(w http.ResponseWriter, r *http.Request, result any) {
 			"result":   result,
 		}
 	case "GET":
-		// List response
 		switch v := result.(type) {
 		case []any:
 			resp = map[string]any{
@@ -87,7 +83,6 @@ func TestNetBoxWebhook_Validate(t *testing.T) {
 			name: "valid payload",
 			payload: NetBoxWebhook{
 				Event: "created",
-				Model: "ipam.ipaddress",
 				Data: NetBoxIPAddress{
 					Address: "2a14:7583:f244::3b06/128",
 					DNSName: "3b06.fra-de.backbone.yori.moe",
@@ -98,7 +93,6 @@ func TestNetBoxWebhook_Validate(t *testing.T) {
 		{
 			name: "missing event",
 			payload: NetBoxWebhook{
-				Model: "ipam.ipaddress",
 				Data: NetBoxIPAddress{
 					Address: "2a14:7583:f244::3b06/128",
 					DNSName: "3b06.fra-de.backbone.yori.moe",
@@ -108,7 +102,7 @@ func TestNetBoxWebhook_Validate(t *testing.T) {
 			errMsg:  "event is required",
 		},
 		{
-			name: "unsupported model",
+			name: "unknown model still passes",
 			payload: NetBoxWebhook{
 				Event: "created",
 				Model: "dcim.device",
@@ -117,14 +111,12 @@ func TestNetBoxWebhook_Validate(t *testing.T) {
 					DNSName: "3b06.fra-de.backbone.yori.moe",
 				},
 			},
-			wantErr: true,
-			errMsg:  "unsupported model",
+			wantErr: false,
 		},
 		{
 			name: "missing dns_name",
 			payload: NetBoxWebhook{
 				Event: "created",
-				Model: "ipam.ipaddress",
 				Data: NetBoxIPAddress{
 					Address: "2a14:7583:f244::3b06/128",
 				},
@@ -136,7 +128,6 @@ func TestNetBoxWebhook_Validate(t *testing.T) {
 			name: "missing address",
 			payload: NetBoxWebhook{
 				Event: "created",
-				Model: "ipam.ipaddress",
 				Data: NetBoxIPAddress{
 					DNSName: "3b06.fra-de.backbone.yori.moe",
 				},
@@ -180,14 +171,13 @@ func TestSyncAAAA_Created(t *testing.T) {
 			"name":    "3b06.fra-de.backbone.yori.moe",
 			"content": "2a14:7583:f244::3b06",
 			"ttl":     1,
-			"proxied": false,
 		}
 
 		switch r.Method {
 		case "GET":
-			mockDNSResponse(w, r, []any{}) // 空列表 = 记录不存在
+			mockDNSResponse(w, r, []any{})
 		case "POST":
-			mockDNSResponse(w, r, record) // 创建成功
+			mockDNSResponse(w, r, record)
 		default:
 			mockDNSResponse(w, r, record)
 		}
@@ -205,7 +195,6 @@ func TestSyncAAAA_Created(t *testing.T) {
 
 	result, err := svc.ProcessWebhook(ctx, &NetBoxWebhook{
 		Event: "created",
-		Model: "ipam.ipaddress",
 		Data: NetBoxIPAddress{
 			Address: "2a14:7583:f244::3b06/128",
 			DNSName: "3b06.fra-de.backbone.yori.moe",
@@ -237,7 +226,7 @@ func TestProcessWebhook_Deleted(t *testing.T) {
 
 		switch r.Method {
 		case "GET":
-			mockDNSResponse(w, r, []any{record}) // 记录存在
+			mockDNSResponse(w, r, []any{record})
 		case "DELETE":
 			mockDNSResponse(w, r, nil)
 		default:
@@ -257,7 +246,6 @@ func TestProcessWebhook_Deleted(t *testing.T) {
 
 	result, err := svc.ProcessWebhook(ctx, &NetBoxWebhook{
 		Event: "deleted",
-		Model: "ipam.ipaddress",
 		Data: NetBoxIPAddress{
 			Address: "2a14:7583:f244::3b06/128",
 			DNSName: "3b06.fra-de.backbone.yori.moe",
@@ -273,8 +261,6 @@ func TestProcessWebhook_Deleted(t *testing.T) {
 }
 
 func TestProcessWebhook_EventHandling(t *testing.T) {
-	// service 层面不校验 enabled_events（那是 handler 的职责）
-	// event 类型为 "updated" 时，service 仍然正常处理
 	cfClient, server := setupMockCFClient(func(w http.ResponseWriter, r *http.Request) {
 		record := map[string]any{
 			"id":      "record-001",
@@ -304,7 +290,6 @@ func TestProcessWebhook_EventHandling(t *testing.T) {
 
 	result, err := svc.ProcessWebhook(ctx, &NetBoxWebhook{
 		Event: "updated",
-		Model: "ipam.ipaddress",
 		Data: NetBoxIPAddress{
 			Address: "2a14:7583:f244::3b06/128",
 			DNSName: "3b06.fra-de.backbone.yori.moe",

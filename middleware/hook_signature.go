@@ -28,7 +28,7 @@ func HookSignature(secret string) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			// 无密钥时跳过验证
 			if secret == "" {
-				zap.L().Warn("Webhook HMAC secret is not configured — skipping signature verification")
+				zap.L().Debug("Webhook HMAC secret is not configured — skipping signature verification")
 				return next(c)
 			}
 
