@@ -97,4 +97,6 @@ func InitLogger(cfg *LogConfig) {
 
 	// 替换全局 Logger
 	zap.ReplaceGlobals(Log)
+
+	Log.Info("Logger initialized", zap.String("level", cfg.LogLevel))
 }
