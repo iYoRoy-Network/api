@@ -60,7 +60,7 @@ func Init(e *echo.Echo, cfg *config.Config) {
 
 	// 5. 注册 webhook 路由
 	rdnsHandler := webhook.NewHandler(rdnsSvc, &cfg.Webhook)
-	webhookGroup.POST("/ipam/rdns", rdnsHandler.HandleIPAMRDNS)
+	webhookGroup.POST("/ipam/dns", rdnsHandler.HandleIPAMDNS)
 
 	zap.L().Info("Cloudflare client initialized and webhook routes registered",
 		zap.Int("forward_zones", len(cfg.Cloudflare.ForwardZones)),

@@ -61,7 +61,7 @@ docker run -p 8080:8080 \
 ## Webhook 端点
 
 ```
-POST /webhook/ipam/rdns
+POST /webhook/ipam/dns
 ```
 
 NetBox 配置：Operations → Webhooks → 新建，Content type 选 `IPAM > IP address`，URL 填上述地址。

@@ -25,9 +25,9 @@ func NewHandler(svc *Service, cfg *config.WebhookConfig) *Handler {
 	}
 }
 
-// HandleIPAMRDNS 处理 /webhook/ipam/rdns 的 POST 请求
+// HandleIPAMDNS 处理 /webhook/ipam/dns 的 POST 请求
 // 接收 NetBox webhook，同步 Cloudflare DNS 记录
-func (h *Handler) HandleIPAMRDNS(c echo.Context) error {
+func (h *Handler) HandleIPAMDNS(c echo.Context) error {
 	// 读取原始请求体用于调试日志
 	rawBody, _ := io.ReadAll(c.Request().Body)
 	c.Request().Body = io.NopCloser(bytes.NewBuffer(rawBody))
