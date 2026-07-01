@@ -127,8 +127,13 @@ func (s *Service) syncNodeDNSForEvent(ctx context.Context, webhook *NetBoxWebhoo
 		return
 	}
 
-	node := GetNodeIANA(webhook.Data.CustomFields)
+	cf := webhook.Data.CustomFields
+	node := GetNodeIANA(cf)
 	if node == nil {
+		// 有 IP 地址但没有 DNS 名 → 配置不完整，打 warn
+		if hasAnyIANAField(cf) {
+			zap.L().Warn("Node IANA DNS sync skipped: Node_IANA_DNS is empty but IP fields are set")
+		}
 		return
 	}
 
@@ -200,7 +205,7 @@ func (s *Service) syncNodeDNS(_ context.Context, node *NodeIANA) error {
 	return nil
 }
 
-// cleanupOldNodeDNS 对比新旧 custom_fields，删除被移除或改变的记录
+// cleanupOldNodeDNS 对比新旧 custom_fields，只删除真正变化了的记录。
 func (s *Service) cleanupOldNodeDNS(ctx context.Context, oldCF, newCF map[string]any) {
 	if s.dmgr == nil || s.dmgrCache == nil {
 		return
@@ -209,17 +214,54 @@ func (s *Service) cleanupOldNodeDNS(ctx context.Context, oldCF, newCF map[string
 	oldNode := GetNodeIANA(oldCF)
 	newNode := GetNodeIANA(newCF)
 
-	// 如果旧值存在且与新值不同，删除旧记录
-	if oldNode != nil && (newNode == nil || oldNode.DNS != newNode.DNS ||
-		oldNode.IPv4Addr != newNode.IPv4Addr || oldNode.IPv6Addr != newNode.IPv6Addr) {
-		zap.L().Info("Node IANA DNS changed, deleting old records",
+	if oldNode == nil {
+		return // 之前没有 Node IANA 数据，无需清理
+	}
+
+	// 整个 Node IANA 被清除 → 全部删除
+	if newNode == nil {
+		zap.L().Info("Node IANA DNS fields cleared, deleting all old records",
 			zap.String("old_dns", oldNode.DNS),
 		)
 		s.deleteNodeDNS(ctx, oldNode)
+		return
+	}
+
+	// DNS 名变了 → 全部旧记录都得删（域名不同了）
+	if oldNode.DNS != newNode.DNS {
+		zap.L().Info("Node IANA DNS name changed, deleting all old records",
+			zap.String("old_dns", oldNode.DNS),
+			zap.String("new_dns", newNode.DNS),
+		)
+		s.deleteNodeDNS(ctx, oldNode)
+		return
+	}
+
+	// DNS 名相同，只删值变化了的记录类型
+	domain, subdomain := s.dmgrCache.Match(newNode.DNS)
+	if domain == nil {
+		return
+	}
+
+	if oldNode.IPv4Addr != newNode.IPv4Addr {
+		if oldNode.IPv4Addr != "" {
+			zap.L().Info("Node IANA IPv4 changed, deleting old A records",
+				zap.String("old", oldNode.IPv4Addr), zap.String("new", newNode.IPv4Addr))
+			_ = s.dmgr.DeleteRecordByName(domain.ID, subdomain, "A")
+			_ = s.dmgr.DeleteRecordByName(domain.ID, "ipv4."+subdomain, "A")
+		}
+	}
+	if oldNode.IPv6Addr != newNode.IPv6Addr {
+		if oldNode.IPv6Addr != "" {
+			zap.L().Info("Node IANA IPv6 changed, deleting old AAAA records",
+				zap.String("old", oldNode.IPv6Addr), zap.String("new", newNode.IPv6Addr))
+			_ = s.dmgr.DeleteRecordByName(domain.ID, subdomain, "AAAA")
+			_ = s.dmgr.DeleteRecordByName(domain.ID, "ipv6."+subdomain, "AAAA")
+		}
 	}
 }
 
-// deleteNodeDNS 删除 Node IANA DNS 的全部记录
+// deleteNodeDNS 删除 Node IANA DNS 的全部记录（A + AAAA，含 ipv4./ipv6. 前缀）
 func (s *Service) deleteNodeDNS(ctx context.Context, node *NodeIANA) {
 	domain, subdomain := s.dmgrCache.Match(node.DNS)
 	if domain == nil {
@@ -232,15 +274,11 @@ func (s *Service) deleteNodeDNS(ctx context.Context, node *NodeIANA) {
 		zap.String("subdomain", subdomain),
 	)
 
-	// 尝试删除所有可能存在的记录
-	dmgrClient := s.dmgr
-	if node.IPv4Addr != "" {
-		_ = dmgrClient.DeleteRecordByName(domain.ID, subdomain, "A")
-		_ = dmgrClient.DeleteRecordByName(domain.ID, "ipv4."+subdomain, "A")
-	}
-	if node.IPv6Addr != "" {
-		_ = dmgrClient.DeleteRecordByName(domain.ID, subdomain, "AAAA")
-		_ = dmgrClient.DeleteRecordByName(domain.ID, "ipv6."+subdomain, "AAAA")
+	// A + AAAA，以及 ipv4/ipv6 前缀变体
+	for _, recType := range []string{"A", "AAAA"} {
+		_ = s.dmgr.DeleteRecordByName(domain.ID, subdomain, recType)
+		_ = s.dmgr.DeleteRecordByName(domain.ID, "ipv4."+subdomain, recType)
+		_ = s.dmgr.DeleteRecordByName(domain.ID, "ipv6."+subdomain, recType)
 	}
 }
 

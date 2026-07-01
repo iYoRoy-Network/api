@@ -147,7 +147,8 @@ type NodeIANA struct {
 	IPv4Addr   string // Node_IANA_IPv4_Address
 }
 
-// GetNodeIANA 从 custom_fields map 中提取 IANA 字段
+// GetNodeIANA 从 custom_fields map 中提取 IANA 字段。
+// DNS 为空或两个 IP 都为空时返回 nil。
 func GetNodeIANA(cf map[string]any) *NodeIANA {
 	if cf == nil {
 		return nil
@@ -164,10 +165,20 @@ func GetNodeIANA(cf map[string]any) *NodeIANA {
 		n.IPv4Addr = v
 	}
 
-	// 至少要有 DNS 和任一 IP 地址才算有效
 	if n.DNS == "" || (n.IPv6Addr == "" && n.IPv4Addr == "") {
 		return nil
 	}
 
 	return n
+}
+
+// hasAnyIANAField 检查 custom_fields 中是否有 IANA 相关字段（用于诊断日志）
+func hasAnyIANAField(cf map[string]any) bool {
+	if cf == nil {
+		return false
+	}
+	_, hasDNS := cf["Node_IANA_DNS"]
+	_, hasV4 := cf["Node_IANA_IPv4_Address"]
+	_, hasV6 := cf["Node_IANA_IPv6_Address"]
+	return hasDNS || hasV4 || hasV6
 }
