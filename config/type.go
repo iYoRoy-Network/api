@@ -7,6 +7,7 @@ type Config struct {
 	Server     ServerConfig     `koanf:"server"`
 	Log        utils.LogConfig  `koanf:"log"`
 	Cloudflare CloudflareConfig `koanf:"cloudflare"`
+	Dnsmgr     DnsmgrConfig     `koanf:"dnsmgr"`
 	Webhook    WebhookConfig    `koanf:"webhook"`
 }
 
@@ -28,6 +29,15 @@ type ReverseZoneConfig struct {
 	Prefix   string `koanf:"prefix"`
 	ZoneID   string `koanf:"zone_id"`
 	ZoneName string `koanf:"zone_name"`
+}
+
+// DnsmgrConfig 聚合 DNS 管理系统配置
+type DnsmgrConfig struct {
+	BaseURL     string `koanf:"base_url"`
+	UID         int    `koanf:"uid"`
+	Key         string `koanf:"key"`
+	DefaultLine string `koanf:"default_line"`
+	DefaultTTL  int    `koanf:"default_ttl"`
 }
 
 // WebhookConfig Webhook 模块配置

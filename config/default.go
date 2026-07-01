@@ -17,6 +17,13 @@ func defaultConfig() Config {
 			ForwardZones: []ZoneConfig{},
 			ReverseZones: []ReverseZoneConfig{},
 		},
+		Dnsmgr: DnsmgrConfig{
+			BaseURL:     "",
+			UID:         0,
+			Key:         "",
+			DefaultLine: "default",
+			DefaultTTL:  600,
+		},
 		Webhook: WebhookConfig{
 			EnabledEvents: []string{"created", "updated", "deleted"},
 			HMACSecret:    "",
