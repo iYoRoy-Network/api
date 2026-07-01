@@ -102,15 +102,16 @@ func (w *NetBoxWebhook) IsEventEnabled(enabledEvents []string) bool {
 	return slices.Contains(enabledEvents, w.Event)
 }
 
-// snapshotIPData snapshot 中只提取 address 和 dns_name。
+// snapshotIPData snapshot 中只提取 address、dns_name 和 custom_fields。
 // snapshot 里的字段类型可能与主 data 不同（如 status 是字符串而非对象），
 // 用最小结构体避免解析失败。
 type snapshotIPData struct {
-	Address string `json:"address"`
-	DNSName string `json:"dns_name"`
+	Address      string         `json:"address"`
+	DNSName      string         `json:"dns_name"`
+	CustomFields map[string]any `json:"custom_fields"`
 }
 
-// PreChangeData 从 snapshot 中提取变更前的 address 和 dns_name。
+// PreChangeData 从 snapshot 中提取变更前的数据。
 // 若 snapshot 为 nil 或解析失败，返回 nil。
 func (w *NetBoxWebhook) PreChangeData() *snapshotIPData {
 	if w.Snapshot == nil {
@@ -137,4 +138,36 @@ func (w *NetBoxWebhook) PreChangeData() *snapshotIPData {
 	}
 
 	return nil
+}
+
+// NodeIANA 从 custom_fields 中提取的三个 IANA 字段
+type NodeIANA struct {
+	DNS        string // Node_IANA_DNS
+	IPv6Addr   string // Node_IANA_IPv6_Address
+	IPv4Addr   string // Node_IANA_IPv4_Address
+}
+
+// GetNodeIANA 从 custom_fields map 中提取 IANA 字段
+func GetNodeIANA(cf map[string]any) *NodeIANA {
+	if cf == nil {
+		return nil
+	}
+
+	n := &NodeIANA{}
+	if v, ok := cf["Node_IANA_DNS"].(string); ok && v != "" {
+		n.DNS = v
+	}
+	if v, ok := cf["Node_IANA_IPv6_Address"].(string); ok && v != "" {
+		n.IPv6Addr = v
+	}
+	if v, ok := cf["Node_IANA_IPv4_Address"].(string); ok && v != "" {
+		n.IPv4Addr = v
+	}
+
+	// 至少要有 DNS 和任一 IP 地址才算有效
+	if n.DNS == "" || (n.IPv6Addr == "" && n.IPv4Addr == "") {
+		return nil
+	}
+
+	return n
 }

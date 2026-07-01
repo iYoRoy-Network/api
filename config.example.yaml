@@ -31,6 +31,13 @@ cloudflare:
       zone_id: "your-reverse-zone-id"
       zone_name: "4.4.2.f.3.8.5.7.4.1.a.2.ip6.arpa"
 
+dnsmgr:                    # 聚合 DNS 管理系统（可选，用于 Node IANA DNS 同步）
+  base_url: ""             # dnsmgr 实例地址
+  uid: 0                   # API 用户 ID
+  key: ""                  # API 密钥
+  default_line: "default"  # 默认线路
+  default_ttl: 600         # 默认 TTL
+
 webhook:
   hmac_secret: ""          # NetBox webhook HMAC-SHA512 签名密钥（为空则跳过验证）
   enabled_events:          # 启用的事件类型
